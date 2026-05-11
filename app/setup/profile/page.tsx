@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { loadRazorpay } from '@/lib/loadRazorpay';
+
 const slideVariants = {
     enter: (direction: number) => ({
         x: direction > 0 ? 1000 : -1000,
@@ -133,9 +134,9 @@ export default function ProfileSetupPage() {
 
             <div className="max-w-2xl w-full relative z-10">
                 {step < 4 && (
-                    <div className="flex justify-between items-center mb-8 px-4">
+                    <div className="flex flex-col mb-8 px-4">
                         {/* Progress Bar */}
-                        <div className="flex justify-between items-center mb-8 px-4">
+                        <div className="flex justify-between items-center mb-4">
                             <div className="flex space-x-2">
                                 {[1, 2, 3].map(i => (
                                     <div key={i} className={`h-2 w-12 rounded-full transition-all duration-500 ${step >= i ? 'bg-orange-500' : 'bg-slate-700'}`} />
@@ -143,12 +144,12 @@ export default function ProfileSetupPage() {
                             </div>
                             <span className="text-slate-400 font-bold text-sm tracking-widest">STEP {step} OF 3</span>
                         </div>
-
-                        {error && <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 text-red-200 rounded-xl text-center text-sm font-semibold">{error}</div>}
-                        <span className="text-slate-400 font-bold text-sm tracking-widest">STEP {step} OF 3</span>
+                        {error && <div className="p-4 bg-red-500/10 border border-red-500/50 text-red-200 rounded-xl text-center text-sm font-semibold">{error}</div>}
                     </div>
                 )}
-                <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[450px]">
+                
+                {/* Fixed the container classes here */}
+                <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[450px] flex flex-col">
                     <AnimatePresence initial={false} custom={direction} mode="wait">
                         <motion.div
                             key={step}
@@ -157,7 +158,8 @@ export default function ProfileSetupPage() {
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            className="absolute inset-0 p-8 sm:p-12 flex flex-col justify-center"
+                            // Removed 'absolute inset-0' so height can expand automatically
+                            className="p-8 sm:p-12 flex flex-col justify-center w-full flex-grow"
                         >
 
                             {/* STEP 1: PERSONAL INFO */}
@@ -303,28 +305,29 @@ export default function ProfileSetupPage() {
                             )}
                         </motion.div>
                     </AnimatePresence>
-            </div>
+                </div>
 
-            {/* Navigation Buttons */}
-            <div className="flex justify-between items-center mt-8">
-                {step > 1 ? (
-                    <button onClick={prevStep} className="px-8 py-3 text-slate-400 font-bold hover:text-white transition-colors">
-                        Back
-                    </button>
-                ) : <div />} {/* Empty div to keep 'Next' aligned right */}
+                {/* Navigation Buttons - Hidden entirely on Step 4 */}
+                {step < 4 && (
+                    <div className="flex justify-between items-center mt-8">
+                        {step > 1 ? (
+                            <button onClick={prevStep} className="px-8 py-3 text-slate-400 font-bold hover:text-white transition-colors">
+                                Back
+                            </button>
+                        ) : <div />} {/* Empty div to keep 'Next' aligned right */}
 
-                {step < 3 ? (
-                    <button onClick={nextStep} className="px-8 py-3 bg-orange-500 text-slate-900 font-extrabold rounded-xl hover:bg-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all">
-                        Next Step →
-                    </button>
-                ) : (
-                    <button onClick={handleSubmit} disabled={isLoading} className="px-8 py-3 bg-orange-500 text-slate-900 font-extrabold rounded-xl hover:bg-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all disabled:opacity-50">
-                        {isLoading ? 'Creating...' : 'Complete Profile 🎉'}
-                    </button>
+                        {step < 3 ? (
+                            <button onClick={nextStep} className="px-8 py-3 bg-orange-500 text-slate-900 font-extrabold rounded-xl hover:bg-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all">
+                                Next Step →
+                            </button>
+                        ) : (
+                            <button onClick={handleSubmit} disabled={isLoading} className="px-8 py-3 bg-orange-500 text-slate-900 font-extrabold rounded-xl hover:bg-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all disabled:opacity-50">
+                                {isLoading ? 'Creating...' : 'Complete Profile 🎉'}
+                            </button>
+                        )}
+                    </div>
                 )}
             </div>
-
         </div>
-        </div >
     );
 }
