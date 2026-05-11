@@ -20,8 +20,7 @@ export default function RegisterPage() {
 
     try {
       // Use plain axios to avoid interceptors completely
-      await axios.post(`${API_URL}/auth/register`, formData);
-      
+      const response = await axios.post(`${API_URL}/auth/register`, formData);
       router.push(`/auth/verify?email=${encodeURIComponent(formData.email.toLowerCase().trim())}`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register. Please try again.');

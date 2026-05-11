@@ -208,8 +208,71 @@ export default function CreateCampaign() {
                 <textarea rows={3} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 resize-none" placeholder="Write an engaging caption for your promotion..." value={formData.caption} onChange={e => setFormData({...formData, caption: e.target.value})} disabled={isLoading} />
               </div>
               
-              {/* Settings */}
+              {/* Campaign Strategy & Targeting */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-6">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Campaign Goal</label>
+                  <select 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                    value={formData.campaignGoal}
+                    onChange={e => setFormData({...formData, campaignGoal: e.target.value})}
+                    disabled={isLoading}
+                  >
+                    <option value="brand_awareness">Brand Awareness</option>
+                    <option value="website_traffic">Website Traffic</option>
+                    <option value="lead_generation">Lead Generation</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Target Gender</label>
+                  <select 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                    value={formData.targetAudience.gender}
+                    onChange={e => setFormData({
+                      ...formData, 
+                      targetAudience: { ...formData.targetAudience, gender: e.target.value }
+                    })}
+                    disabled={isLoading}
+                  >
+                    <option value="all">All Genders</option>
+                    <option value="male">Male Only</option>
+                    <option value="female">Female Only</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Age Targeting */}
               <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Min Age</label>
+                  <input 
+                    type="number" min="13" max="100" 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-mono" 
+                    value={formData.targetAudience.ageRange.min} 
+                    onChange={e => setFormData({
+                      ...formData, 
+                      targetAudience: { ...formData.targetAudience, ageRange: { ...formData.targetAudience.ageRange, min: Number(e.target.value) } }
+                    })} 
+                    disabled={isLoading} 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Max Age</label>
+                  <input 
+                    type="number" min="13" max="100" 
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-mono" 
+                    value={formData.targetAudience.ageRange.max} 
+                    onChange={e => setFormData({
+                      ...formData, 
+                      targetAudience: { ...formData.targetAudience, ageRange: { ...formData.targetAudience.ageRange, max: Number(e.target.value) } }
+                    })} 
+                    disabled={isLoading} 
+                  />
+                </div>
+              </div>
+
+              {/* Budget & Duration */}
+              <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-6">
                 <div>
                   <label className="block text-sm font-bold text-slate-700 mb-2">Budget (₹) *</label>
                   <input type="number" min="500" className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none focus:ring-2 focus:ring-orange-500 font-mono" value={formData.budget} onChange={e => setFormData({...formData, budget: Number(e.target.value)})} disabled={isLoading} />
