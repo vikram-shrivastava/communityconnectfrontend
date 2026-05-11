@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import api from '@/lib/api';
+import axios from 'axios'; // <-- Import plain axios
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,8 +19,9 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await api.post('/auth/register', formData);
-      // Route to verify page, passing the email via query params
+      // Use plain axios to avoid interceptors completely
+      await axios.post(`${API_URL}/auth/register`, formData);
+      
       router.push(`/auth/verify?email=${encodeURIComponent(formData.email.toLowerCase().trim())}`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to register. Please try again.');
@@ -43,7 +46,7 @@ export default function RegisterPage() {
             <input
               type="text"
               required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none text-slate-900 bg-white"
               placeholder="e.g. Ramesh Srivastava"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -54,7 +57,7 @@ export default function RegisterPage() {
             <input
               type="email"
               required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none text-slate-900 bg-white"
               placeholder="name@example.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -65,7 +68,7 @@ export default function RegisterPage() {
             <input
               type="password"
               required
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent outline-none text-slate-900 bg-white"
               placeholder="Minimum 6 characters"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -77,7 +80,7 @@ export default function RegisterPage() {
             </label>
             <input
               type="text"
-              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-900 outline-none uppercase"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-900 outline-none uppercase text-slate-900"
               placeholder="Got an invite? Paste it here"
               value={formData.inviteCode}
               onChange={(e) => setFormData({ ...formData, inviteCode: e.target.value.toUpperCase() })}

@@ -2,7 +2,9 @@
 
 import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import api from '@/lib/api';
+import axios from 'axios'; // <-- Import plain axios
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 function VerifyForm() {
   const router = useRouter();
@@ -22,7 +24,8 @@ function VerifyForm() {
     setError('');
 
     try {
-      const response = await api.post('/auth/verify', { email, verifyCode: code });
+      // Use plain axios here too
+      const response = await axios.post(`${API_URL}/auth/verify`, { email, verifyCode: code });
       const { status, _id } = response.data.data;
 
       if (status === 'waitlist') {
@@ -57,7 +60,7 @@ function VerifyForm() {
             type="text"
             maxLength={6}
             required
-            className="w-full px-4 py-4 rounded-xl border border-slate-200 text-center text-3xl font-bold tracking-[0.5em] focus:ring-2 focus:ring-slate-900 outline-none mb-6"
+            className="w-full px-4 py-4 rounded-xl border border-slate-200 text-center text-3xl font-bold tracking-[0.5em] focus:ring-2 focus:ring-slate-900 outline-none mb-6 text-slate-900 bg-white"
             placeholder="000000"
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} // Numbers only

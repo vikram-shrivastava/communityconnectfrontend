@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import api from '@/lib/api';
+import axios from 'axios'; // <-- Import plain axios
+import api from '@/lib/api'; // <-- Keep api for protected routes
 import { useAuthStore } from '@/store/authStore';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -19,19 +22,18 @@ export default function LoginPage() {
         setError('');
         setIsLoading(true);
 
-       try {
-            // 1. Log the user in
-            const response = await api.post('/auth/login', formData);
+        try {
+            // 1. Log the user in using PLAIN AXIOS (bypasses interceptors)
+            const response = await axios.post(`${API_URL}/auth/login`, formData);
             
-            // 🌟 FIXED: Destructure the tokens from the backend response
-            const { user, accessToken, refreshToken } = response.data.data; 
+            const { user, accessToken, refreshToken } = response.data.data;
             setUser(user);
 
-            // 🌟 FIXED: Save them to local storage
+            // Save tokens immediately so the next request can use them
             localStorage.setItem('accessToken', accessToken);
             localStorage.setItem('refreshToken', refreshToken);
 
-            // 2. Check if Profile exists
+            // 2. Check if Profile exists using the API HELPER (attaches the token we just saved)
             try {
                 await api.get('/profiles');
 
@@ -46,13 +48,11 @@ export default function LoginPage() {
                 if (profileErr.response?.status === 404) {
                     router.push('/setup/profile');
                 } else {
-                    // If it's a different error, just push to home and let ProtectedRoute handle it
                     router.push('/home');
                 }
             }
 
         } catch (err: any) {
-            // Catch waitlist / bad password logic from before...
             const status = err.response?.status;
             const responseData = err.response?.data?.data;
             if (status === 403 && responseData?.status === 'waitlist') {
@@ -81,7 +81,7 @@ export default function LoginPage() {
                         <input
                             type="email"
                             required
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none text-slate-900 bg-white"
                             placeholder="name@example.com"
                             value={formData.email}
                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -95,7 +95,7 @@ export default function LoginPage() {
                         <input
                             type="password"
                             required
-                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none"
+                            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-slate-900 outline-none text-slate-900 bg-white"
                             placeholder="Enter your password"
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
