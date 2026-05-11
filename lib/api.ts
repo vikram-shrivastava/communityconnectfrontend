@@ -4,45 +4,61 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1
 
 const api = axios.create({
   baseURL: API_URL,
-  withCredentials: true, // Crucial for sending/receiving httpOnly cookies
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Axios interceptor to handle token expiration gracefully
+// 🌟 FIX 1: Attach token from localStorage to every request automatically
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-
-    // 🌟 FIX: Do not intercept requests made to the authentication endpoints!
-    // If a user types a wrong password, we want the component to handle the 401 error, 
-    // not the interceptor.
     const isAuthRoute = originalRequest.url?.includes('/auth/login') || 
                         originalRequest.url?.includes('/auth/register') || 
                         originalRequest.url?.includes('/auth/verify');
 
-    // If 401 Unauthorized, we haven't retried yet, AND it's not an auth route
     if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
 
       try {
-        // Hit the refresh endpoint. The browser automatically sends the httpOnly refreshToken cookie.
-        await axios.post(`${API_URL}/auth/refresh-token`, {}, { withCredentials: true });
+        // 🌟 FIX 2: Send refreshToken from localStorage as a fallback
+        const fallbackRefreshToken = typeof window !== 'undefined' ? localStorage.getItem('refreshToken') : null;
+
+        const response = await axios.post(`${API_URL}/auth/refresh-token`, {
+          refreshToken: fallbackRefreshToken
+        }, { withCredentials: true });
         
-        // If successful, the backend attached a new accessToken cookie. Retry the original request.
+        // Update localStorage with the new tokens
+        const { accessToken, refreshToken } = response.data.data;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('refreshToken', refreshToken);
+        }
+
+        // Retry the original request
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return api(originalRequest);
       } catch (refreshError) {
-        // If refresh fails (token expired/invalid), redirect to login
         if (typeof window !== 'undefined') {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
           window.location.href = '/auth/login';
         }
         return Promise.reject(refreshError);
       }
     }
-    
-    // For all auth routes and non-401 errors, just pass the error back to the component
     return Promise.reject(error);
   }
 );

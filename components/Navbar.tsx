@@ -19,6 +19,10 @@ export default function Navbar() {
     } catch (e) {
       console.error(e);
     } finally {
+      // 🌟 FIXED: Clear local storage tokens
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      
       logout();
       router.push('/auth/login');
     }

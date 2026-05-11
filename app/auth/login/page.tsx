@@ -19,11 +19,17 @@ export default function LoginPage() {
         setError('');
         setIsLoading(true);
 
-        try {
+       try {
             // 1. Log the user in
             const response = await api.post('/auth/login', formData);
-            const { user } = response.data.data;
+            
+            // 🌟 FIXED: Destructure the tokens from the backend response
+            const { user, accessToken, refreshToken } = response.data.data; 
             setUser(user);
+
+            // 🌟 FIXED: Save them to local storage
+            localStorage.setItem('accessToken', accessToken);
+            localStorage.setItem('refreshToken', refreshToken);
 
             // 2. Check if Profile exists
             try {
