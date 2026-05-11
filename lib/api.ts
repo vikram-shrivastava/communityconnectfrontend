@@ -16,8 +16,15 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If 401 Unauthorized and we haven't retried yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // 🌟 FIX: Do not intercept requests made to the authentication endpoints!
+    // If a user types a wrong password, we want the component to handle the 401 error, 
+    // not the interceptor.
+    const isAuthRoute = originalRequest.url?.includes('/auth/login') || 
+                        originalRequest.url?.includes('/auth/register') || 
+                        originalRequest.url?.includes('/auth/verify');
+
+    // If 401 Unauthorized, we haven't retried yet, AND it's not an auth route
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthRoute) {
       originalRequest._retry = true;
 
       try {
@@ -34,6 +41,8 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
+    
+    // For all auth routes and non-401 errors, just pass the error back to the component
     return Promise.reject(error);
   }
 );
