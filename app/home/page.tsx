@@ -6,9 +6,10 @@ import Navbar from '@/components/Navbar';
 import api from '@/lib/api';
 import CreatePostModal from '@/components/CreatePostModal';
 import { useAuthStore } from '@/store/authStore';
-import { Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Image as ImageIcon, Loader2, Users } from 'lucide-react';
 import CommentsModal from '@/components/CommentsModal';
 import InviteCard from '@/components/InviteCard';
+import Link from 'next/link';
 
 export default function FeedPage() {
   const { user } = useAuthStore();
@@ -17,40 +18,50 @@ export default function FeedPage() {
   const [feed, setFeed] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [totalMembers, setTotalMembers] = useState<number>(0);
 
   // Loading States
-  const [isLoading, setIsLoading] = useState(true); // For initial load
-  const [isFetchingMore, setIsFetchingMore] = useState(false); // For infinite scroll
+  const [isLoading, setIsLoading] = useState(true); 
+  const [isFetchingMore, setIsFetchingMore] = useState(false); 
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
 
-  // 🌟 FIX 1: Track Ad Impressions with the correct URL params
+  // Fetch Total Members on mount
   useEffect(() => {
-    // Only track posts that are ads
+    const fetchTotalMembers = async () => {
+      try {
+        // Make sure this matches the route you define in your Express router
+        const res = await api.get('/profiles/members/count'); 
+        setTotalMembers(res.data.data.totalMembers);
+      } catch (error) {
+        console.error("Failed to fetch total members", error);
+      }
+    };
+    fetchTotalMembers();
+  }, []);
+
+  // Track Ad Impressions
+  useEffect(() => {
     const adElements = document.querySelectorAll('[data-campaign-id]');
 
     const adObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const campaignId = entry.target.getAttribute('data-campaign-id');
-
-          // Fire the impression to the backend using the dynamic URL parameter
           api.post(`/campaigns/impression/${campaignId}`).catch(e => console.error(e));
-
-          // Stop observing so we don't count it twice if they scroll up and down
           adObserver.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.5 }); // Triggers when 50% of the ad is visible on screen
+    }, { threshold: 0.5 }); 
 
     adElements.forEach(el => adObserver.observe(el));
 
     return () => adObserver.disconnect();
-  }, [feed]); // Re-run when feed updates
+  }, [feed]); 
 
-  // 1. Fetch Feed Logic
+  // Fetch Feed Logic
   const fetchFeed = async (pageNum: number) => {
     try {
       if (pageNum === 1) setIsLoading(true);
@@ -60,12 +71,9 @@ export default function FeedPage() {
       const newPosts = response.data.data.feed;
 
       if (newPosts.length === 0) {
-        setHasMore(false); // We hit the end of the database
+        setHasMore(false);
       } else {
-        // If it's page 1, replace. If it's page > 1, append.
         setFeed(prev => pageNum === 1 ? newPosts : [...prev, ...newPosts]);
-
-        // If we got fewer than 10 posts back, there are no more left
         if (newPosts.length < 10) setHasMore(false);
       }
     } catch (error) {
@@ -76,30 +84,25 @@ export default function FeedPage() {
     }
   };
 
-  // Trigger fetch when page changes
   useEffect(() => {
     fetchFeed(page);
   }, [page]);
 
-  // 2. The Intersection Observer (The Infinite Scroll Magic)
   const observer = useRef<IntersectionObserver | null>(null);
 
   const lastPostElementRef = useCallback((node: HTMLDivElement | null) => {
     if (isLoading || isFetchingMore) return;
-
     if (observer.current) observer.current.disconnect();
 
     observer.current = new IntersectionObserver(entries => {
-      // If the last element is visible on screen, and we have more posts to load...
       if (entries[0].isIntersecting && hasMore) {
-        setPage(prevPage => prevPage + 1); // Bump the page number, triggering the useEffect
+        setPage(prevPage => prevPage + 1); 
       }
     });
 
     if (node) observer.current.observe(node);
   }, [isLoading, isFetchingMore, hasMore]);
 
-  // Actions
   const handleCommentAdded = (postId: string) => {
     setFeed(current => current.map(post => {
       if (post._id === postId) {
@@ -110,8 +113,6 @@ export default function FeedPage() {
   };
 
   const handleLike = async (postId: string, isAd: boolean) => {
-    // if (isAd) return;
-
     try {
       setFeed(current => current.map(post => {
         if (post._id === postId) {
@@ -159,9 +160,21 @@ export default function FeedPage() {
 
           <InviteCard />
 
+          {/* Members Joined Banner with Blinking Effect */}
+          {totalMembers > 0 && (
+            <div className="bg-slate-900 rounded-2xl p-4 mb-8 flex items-center justify-center space-x-3 shadow-md border border-slate-800">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-orange-500"></span>
+              </span>
+              <p className="text-slate-200 font-medium">
+                <span className="text-orange-500 font-extrabold text-lg animate-pulse">{totalMembers}</span> members have joined the community
+              </p>
+            </div>
+          )}
+
           <h2 className="text-xl font-extrabold text-slate-900 mb-6">Recent Updates</h2>
 
-          {/* Initial Loading State */}
           {isLoading ? (
             <div className="text-center py-20 flex flex-col items-center">
               <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -170,29 +183,28 @@ export default function FeedPage() {
           ) : (
             <div className="space-y-6">
               {feed.map((post, index) => {
-                // Determine if this is the last post in the array
                 const isLastPost = feed.length === index + 1;
 
                 return (
                   <div
                     key={post._id || index}
-                    // Attach the invisible tripwire ONLY to the very last post
                     ref={isLastPost ? lastPostElementRef : null}
-                    data-campaign-id={post.isAd ? post.campaignId : undefined} // Added for Impression tracking
+                    data-campaign-id={post.isAd ? post.campaignId : undefined} 
                     className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6"
                   >
-                    {/* Post Header */}
+                    {/* Post Header - Wrapped in Link for Profile Routing */}
                     <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold border-2 border-orange-500/30">
+                      {/* Assuming the route to a user profile is /profile/[id] */}
+                      <Link href={`/profile/${post.user?._id}`} className="flex items-center space-x-3 group cursor-pointer">
+                        <div className="w-12 h-12 rounded-full bg-slate-900 flex items-center justify-center text-white font-bold border-2 border-orange-500/30 group-hover:border-orange-500 transition-colors">
                           {post.user?.name?.charAt(0).toUpperCase() || 'U'}
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900">{post.user?.name || 'Unknown User'}</p>
+                          <p className="font-bold text-slate-900 group-hover:text-orange-500 transition-colors">{post.user?.name || 'Unknown User'}</p>
                           {post.location && <p className="text-xs text-slate-500">{post.location}</p>}
                           {post.isAd && <span className="inline-block mt-0.5 text-[10px] font-bold tracking-wider text-orange-600 bg-orange-100 px-2 py-0.5 rounded uppercase">Sponsored</span>}
                         </div>
-                      </div>
+                      </Link>
                     </div>
 
                     {/* Post Content */}
@@ -203,7 +215,6 @@ export default function FeedPage() {
                       <div className="bg-slate-900 rounded-2xl overflow-hidden mb-4 flex items-center justify-center cursor-pointer"
                         onClick={() => {
                           if (post.isAd) {
-                            // 🌟 FIX 2: Fire the click to the backend using the dynamic URL parameter
                             api.post(`/campaigns/click/${post.campaignId}`).catch(e => console.error(e));
                           }
                         }}>
@@ -245,14 +256,14 @@ export default function FeedPage() {
                 </div>
               )}
 
-              {/* Auto-loading Spinner at the bottom */}
+              {/* Auto-loading Spinner */}
               {isFetchingMore && (
                 <div className="py-6 flex justify-center">
                   <Loader2 size={32} className="animate-spin text-orange-500" />
                 </div>
               )}
 
-              {/* End of Feed Message */}
+              {/* End of Feed */}
               {!hasMore && feed.length > 0 && (
                 <div className="text-center py-8 text-slate-400 font-bold text-sm">
                   You've caught up on all the posts! 🎉
@@ -268,7 +279,7 @@ export default function FeedPage() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onSuccess={() => {
-          setPage(1); // Reset to top when you create a new post
+          setPage(1); 
           fetchFeed(1);
         }}
       />
