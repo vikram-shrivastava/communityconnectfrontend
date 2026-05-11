@@ -110,7 +110,7 @@ export default function FeedPage() {
   };
 
   const handleLike = async (postId: string, isAd: boolean) => {
-    if (isAd) return;
+    // if (isAd) return;
 
     try {
       setFeed(current => current.map(post => {
