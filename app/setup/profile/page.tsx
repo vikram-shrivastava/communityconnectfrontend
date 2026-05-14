@@ -41,6 +41,7 @@ export default function ProfileSetupPage() {
         gender: '',
         currentCity: '',
         employmentStatus: '',
+        customEmploymentStatus: '', 
         designation: '',
         companyName: '',
         bio: ''
@@ -50,8 +51,13 @@ export default function ProfileSetupPage() {
         if (step === 1 && (!formData.fullName || !formData.gender || !formData.currentCity)) {
             return setError('Please fill out all required fields.');
         }
-        if (step === 2 && (!formData.employmentStatus)) {
-            return setError('Please select your employment status.');
+        if (step === 2) {
+            if (!formData.employmentStatus) {
+                return setError('Please select your employment status.');
+            }
+            if (formData.employmentStatus === 'other' && !formData.customEmploymentStatus.trim()) {
+                return setError('Please specify your profession.');
+            }
         }
         setError('');
         setDirection(1);
@@ -68,9 +74,19 @@ export default function ProfileSetupPage() {
         setIsLoading(true);
         setError('');
         try {
-            await api.post('/profiles', formData);
+            // We now send BOTH fields to match your new backend schema.
+            // If they didn't select 'other', we set customEmploymentStatus to undefined 
+            // to prevent sending dirty data if the user toggled the dropdown back and forth.
+            const payload = {
+                ...formData,
+                customEmploymentStatus: formData.employmentStatus === 'other' 
+                    ? formData.customEmploymentStatus 
+                    : undefined
+            };
+
+            await api.post('/profiles', payload);
             setDirection(1);
-            setStep(4); // Move to the Matrimony Upsell step instead of home
+            setStep(4); 
         } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to create profile. Try again.');
         } finally {
@@ -88,13 +104,11 @@ export default function ProfileSetupPage() {
             const res = await loadRazorpay();
             if (!res) throw new Error('Razorpay SDK failed to load');
 
-            // 1. Create Order
             const orderRes = await api.post('/payments/create-subscription', { plan: 'matrimony' });
             const { orderId, amount, currency } = orderRes.data.data;
 
-            // 2. Open Razorpay Checkout
             const options = {
-                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Add this to your frontend .env.local
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, 
                 amount,
                 currency,
                 name: "Kayasth Connect",
@@ -102,19 +116,18 @@ export default function ProfileSetupPage() {
                 order_id: orderId,
                 handler: async function (response: any) {
                     try {
-                        // 3. Verify Payment
                         await api.post('/payments/verify-subscription', {
                             razorpay_order_id: response.razorpay_order_id,
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
                             plan: 'matrimony'
                         });
-                        router.push('/setup/matrimony'); // Send straight to matrimony on success
+                        router.push('/setup/matrimony'); 
                     } catch (verifyErr) {
                         alert('Payment verification failed.');
                     }
                 },
-                theme: { color: "#f97316" } // Saffron theme
+                theme: { color: "#f97316" }
             };
 
             const rzp = new (window as any).Razorpay(options);
@@ -128,14 +141,12 @@ export default function ProfileSetupPage() {
 
     return (
         <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 overflow-hidden relative selection:bg-orange-500 selection:text-white">
-            {/* Background Glaze Elements */}
             <div className="absolute top-[-20%] right-[-10%] w-[500px] h-[500px] bg-orange-500/20 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-white/5 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="max-w-2xl w-full relative z-10">
                 {step < 4 && (
                     <div className="flex flex-col mb-8 px-4">
-                        {/* Progress Bar */}
                         <div className="flex justify-between items-center mb-4">
                             <div className="flex space-x-2">
                                 {[1, 2, 3].map(i => (
@@ -148,7 +159,6 @@ export default function ProfileSetupPage() {
                     </div>
                 )}
                 
-                {/* Fixed the container classes here */}
                 <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[450px] flex flex-col">
                     <AnimatePresence initial={false} custom={direction} mode="wait">
                         <motion.div
@@ -158,7 +168,6 @@ export default function ProfileSetupPage() {
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            // Removed 'absolute inset-0' so height can expand automatically
                             className="p-8 sm:p-12 flex flex-col justify-center w-full flex-grow"
                         >
 
@@ -220,15 +229,20 @@ export default function ProfileSetupPage() {
                                             className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none bg-white"
                                             value={formData.employmentStatus}
                                             onChange={e => setFormData({ ...formData, employmentStatus: e.target.value })}
+                                            required
                                         >
                                             <option value="">Select</option>
                                             <option value="employed">Employed</option>
+                                            <option value="freelance">Freelance</option> {/* Added this to match backend */}
                                             <option value="business">Business Owner</option>
                                             <option value="student">Student</option>
                                             <option value="unemployed">Looking for opportunities</option>
+                                            <option value="housewife">Housewife</option>
+                                            <option value="retired">Retired</option>
+                                            <option value="other">Other</option>
                                         </select>
                                     </div>
-                                    {(formData.employmentStatus === 'employed' || formData.employmentStatus === 'business') && (
+                                    {(formData.employmentStatus === 'employed' || formData.employmentStatus === 'business' || formData.employmentStatus === 'freelance') && (
                                         <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-4">
                                             <div>
                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Designation</label>
@@ -248,6 +262,22 @@ export default function ProfileSetupPage() {
                                                     placeholder="e.g. Google"
                                                     value={formData.companyName}
                                                     onChange={e => setFormData({ ...formData, companyName: e.target.value })}
+                                                />
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                    
+                                    {(formData.employmentStatus === 'other') && (
+                                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Please Specify</label>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-orange-500 outline-none"
+                                                    placeholder="Enter your profession"
+                                                    value={formData.customEmploymentStatus}
+                                                    required={formData.employmentStatus === 'other'}
+                                                    onChange={e => setFormData({ ...formData, customEmploymentStatus: e.target.value })}
                                                 />
                                             </div>
                                         </motion.div>
@@ -314,7 +344,7 @@ export default function ProfileSetupPage() {
                             <button onClick={prevStep} className="px-8 py-3 text-slate-400 font-bold hover:text-white transition-colors">
                                 Back
                             </button>
-                        ) : <div />} {/* Empty div to keep 'Next' aligned right */}
+                        ) : <div />} 
 
                         {step < 3 ? (
                             <button onClick={nextStep} className="px-8 py-3 bg-orange-500 text-slate-900 font-extrabold rounded-xl hover:bg-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.3)] transition-all">
